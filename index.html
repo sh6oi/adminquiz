@@ -8,6 +8,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- SheetJS for Excel export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -116,6 +118,25 @@
             gap: 10px;
             border-bottom: 2px solid #f0f0f0;
             padding-bottom: 15px;
+        }
+
+        .card-title .back-btn {
+            background: #f0f0f0;
+            border: none;
+            border-radius: 10px;
+            padding: 8px 15px;
+            color: #667eea;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.3s;
+        }
+
+        .card-title .back-btn:hover {
+            background: #667eea;
+            color: white;
         }
 
         /* Forms */
@@ -274,6 +295,15 @@
         .btn-info {
             background: #17a2b8;
             color: white;
+        }
+
+        .btn-excel {
+            background: #1D6F42;
+            color: white;
+        }
+
+        .btn-excel:hover {
+            background: #0F4C2E;
         }
 
         /* Tables */
@@ -462,6 +492,126 @@
             color: #667eea;
         }
 
+        /* Exam Results Header */
+        .exam-results-header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .exam-results-header h3 {
+            margin-bottom: 10px;
+            font-size: 1.3rem;
+        }
+
+        .exam-results-header p {
+            opacity: 0.9;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .exam-results-header .btn-excel {
+            background: white;
+            color: #764ba2;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .exam-results-header .btn-excel:hover {
+            background: #f0f0f0;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255,255,255,0.3);
+        }
+
+        .stats-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-summary-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            border: 2px solid #e0e0e0;
+        }
+
+        .stat-summary-card .value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #764ba2;
+        }
+
+        .stat-summary-card .label {
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+
+        /* Exam list in results tab */
+        .exam-group {
+            margin-bottom: 30px;
+            border: 2px solid #e0e0e0;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+
+        .exam-group-header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .exam-group-header h3 {
+            font-size: 1.2rem;
+        }
+
+        .exam-group-header .btn-excel-small {
+            background: white;
+            color: #764ba2;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+        }
+
+        .exam-group-header .btn-excel-small:hover {
+            background: #f0f0f0;
+            transform: translateY(-2px);
+        }
+
+        .exam-group-results {
+            padding: 20px;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .header {
@@ -646,11 +796,18 @@
         <!-- Results Tab -->
         <div id="results-tab" class="tab-content">
             <div class="card">
-                <h2 class="card-title"><i class="fas fa-chart-line"></i> نتائج الاختبارات</h2>
-                <div class="search-box">
+                <h2 class="card-title">
+                    <span id="resultsTitle"><i class="fas fa-chart-line"></i> نتائج الاختبارات</span>
+                    <button id="backToAllResultsBtn" class="back-btn" onclick="backToAllResults()" style="display: none;">
+                        <i class="fas fa-arrow-right"></i> العودة إلى كل النتائج
+                    </button>
+                </h2>
+                <div class="search-box" id="resultsSearchBox">
                     <i class="fas fa-search"></i>
                     <input type="text" id="searchResult" placeholder="بحث في النتائج..." onkeyup="searchResults()">
                 </div>
+                <div id="examResultsHeader" style="display: none;"></div>
+                <div id="resultsStats" class="stats-summary" style="display: none;"></div>
                 <div id="resultsList"></div>
             </div>
         </div>
@@ -769,14 +926,15 @@
         const db = getDatabase(app);
 
         // Global variables
-        window.currentEditId = null;
-        window.currentEditExamId = null;
-        window.questions = [];
-        window.editQuestions = [];
-        window.allStudents = [];
-        window.allExams = [];
-        window.allResults = [];
-        window.existingUsernames = new Set();
+        let currentEditId = null;
+        let currentEditExamId = null;
+        let questions = [];
+        let editQuestions = [];
+        let allStudents = [];
+        let allExams = [];
+        let allResults = [];
+        let existingUsernames = new Set();
+        let currentExamFilter = null; // To store the current exam filter
 
         // Toast notification function
         function showToast(message, isError = false) {
@@ -861,11 +1019,11 @@
             const studentsRef = ref(db, 'students');
             get(studentsRef).then((snapshot) => {
                 const students = snapshot.val();
-                window.existingUsernames.clear();
+                existingUsernames.clear();
                 if (students) {
                     Object.values(students).forEach(student => {
                         if (student.username) {
-                            window.existingUsernames.add(student.username);
+                            existingUsernames.add(student.username);
                         }
                     });
                 }
@@ -915,7 +1073,7 @@
             let baseUsername = username;
             let counter = 1;
             
-            while (window.existingUsernames.has(username)) {
+            while (existingUsernames.has(username)) {
                 username = baseUsername + counter;
                 counter++;
             }
@@ -945,8 +1103,8 @@
         window.generateCredentialsFromName = function() {
             const name = document.getElementById('studentName').value.trim();
             if (name) {
-                const username = window.generateUsername(name);
-                const password = window.generatePassword();
+                const username = generateUsername(name);
+                const password = generatePassword();
                 
                 document.getElementById('studentUsername').value = username;
                 document.getElementById('studentPassword').value = password;
@@ -961,8 +1119,8 @@
                 return;
             }
             
-            const username = window.generateUsername(name + Math.floor(Math.random() * 100));
-            const password = window.generatePassword();
+            const username = generateUsername(name + Math.floor(Math.random() * 100));
+            const password = generatePassword();
             
             document.getElementById('studentUsername').value = username;
             document.getElementById('studentPassword').value = password;
@@ -979,7 +1137,16 @@
             
             if (tabName === 'students') loadStudents();
             if (tabName === 'exams') loadExams();
-            if (tabName === 'results') loadResults();
+            if (tabName === 'results') {
+                // Clear any exam filter when switching to results tab
+                currentExamFilter = null;
+                document.getElementById('backToAllResultsBtn').style.display = 'none';
+                document.getElementById('resultsSearchBox').style.display = 'block';
+                document.getElementById('examResultsHeader').style.display = 'none';
+                document.getElementById('resultsStats').style.display = 'none';
+                document.getElementById('resultsTitle').innerHTML = '<i class="fas fa-chart-line"></i> نتائج الاختبارات';
+                loadAllResultsGrouped();
+            }
         }
 
         // Students Management
@@ -995,9 +1162,9 @@
                 return;
             }
 
-            if (window.existingUsernames.has(username)) {
+            if (existingUsernames.has(username)) {
                 showToast('اسم المستخدم موجود بالفعل. الرجاء توليد اسم آخر', true);
-                window.generateCredentials();
+                generateCredentials();
                 return;
             }
             
@@ -1013,7 +1180,7 @@
                 createdAt: new Date().toISOString()
             }).then(() => {
                 showToast('✅ تم إضافة الطالب بنجاح');
-                window.existingUsernames.add(username);
+                existingUsernames.add(username);
                 
                 document.getElementById('studentName').value = '';
                 document.getElementById('studentGrade').value = '';
@@ -1033,14 +1200,14 @@
                 const students = snapshot.val();
                 const tbody = document.getElementById('studentsList');
                 tbody.innerHTML = '';
-                window.allStudents = [];
-                window.existingUsernames.clear();
+                allStudents = [];
+                existingUsernames.clear();
                 
                 if (students) {
                     Object.keys(students).forEach(key => {
                         const student = students[key];
-                        window.allStudents.push({ id: key, ...student });
-                        window.existingUsernames.add(student.username);
+                        allStudents.push({ id: key, ...student });
+                        existingUsernames.add(student.username);
                         
                         const row = tbody.insertRow();
                         row.innerHTML = `
@@ -1119,7 +1286,7 @@
                 document.getElementById('editTelegram').value = student.telegram;
                 document.getElementById('editUsername').value = student.username;
                 document.getElementById('editPassword').value = '';
-                window.currentEditId = id;
+                currentEditId = id;
                 document.getElementById('editStudentModal').style.display = 'flex';
             });
         }
@@ -1147,7 +1314,7 @@
                 updateData.password = password;
             }
             
-            const studentRef = ref(db, 'students/' + window.currentEditId);
+            const studentRef = ref(db, 'students/' + currentEditId);
             update(studentRef, updateData).then(() => {
                 showToast('✅ تم تحديث البيانات بنجاح');
                 closeEditModal();
@@ -1171,7 +1338,7 @@
 
         window.closeEditModal = function() {
             document.getElementById('editStudentModal').style.display = 'none';
-            window.currentEditId = null;
+            currentEditId = null;
         }
 
         window.closeViewModal = function() {
@@ -1184,7 +1351,7 @@
             const tbody = document.getElementById('studentsList');
             tbody.innerHTML = '';
             
-            const filtered = window.allStudents.filter(student => 
+            const filtered = allStudents.filter(student => 
                 student.name.toLowerCase().includes(searchText) ||
                 student.username.toLowerCase().includes(searchText) ||
                 student.telegram.toLowerCase().includes(searchText)
@@ -1274,13 +1441,13 @@
             `;
             
             document.getElementById('questionsContainer').insertAdjacentHTML('beforeend', questionHtml);
-            window.questions.push(questionId);
+            questions.push(questionId);
         }
 
         window.removeQuestion = function(id) {
             if (confirm('هل أنت متأكد من حذف هذا السؤال؟')) {
                 document.getElementById(`question-${id}`).remove();
-                window.questions = window.questions.filter(q => q !== id);
+                questions = questions.filter(q => q !== id);
             }
         }
 
@@ -1293,13 +1460,13 @@
                 return;
             }
             
-            if (window.questions.length === 0) {
+            if (questions.length === 0) {
                 showToast('الرجاء إضافة سؤال واحد على الأقل', true);
                 return;
             }
             
             const examQuestions = [];
-            for (let qId of window.questions) {
+            for (let qId of questions) {
                 const text = document.getElementById(`q-text-${qId}`)?.value.trim();
                 const opt1 = document.getElementById(`q-opt1-${qId}`)?.value.trim();
                 const opt2 = document.getElementById(`q-opt2-${qId}`)?.value.trim();
@@ -1334,7 +1501,7 @@
                 document.getElementById('examTitle').value = '';
                 document.getElementById('examGrade').value = '';
                 document.getElementById('questionsContainer').innerHTML = '';
-                window.questions = [];
+                questions = [];
                 loadExams();
             }).catch((error) => {
                 showToast('حدث خطأ: ' + error.message, true);
@@ -1355,7 +1522,7 @@
                 // Clear and load questions
                 const container = document.getElementById('editQuestionsContainer');
                 container.innerHTML = '';
-                window.editQuestions = [];
+                editQuestions = [];
                 
                 exam.questions.forEach((question, index) => {
                     addEditQuestionFromData(question, index);
@@ -1363,11 +1530,6 @@
                 
                 document.getElementById('editExamModal').style.display = 'flex';
             });
-        }
-
-        window.addEditQuestion = function() {
-            const questionId = 'edit-q' + Date.now() + Math.random().toString(36).substr(2, 9);
-            addEditQuestionHtml(questionId);
         }
 
         function addEditQuestionFromData(question, index) {
@@ -1415,10 +1577,11 @@
             `;
             
             document.getElementById('editQuestionsContainer').insertAdjacentHTML('beforeend', questionHtml);
-            window.editQuestions.push(questionId);
+            editQuestions.push(questionId);
         }
 
-        function addEditQuestionHtml(questionId) {
+        window.addEditQuestion = function() {
+            const questionId = 'edit-q' + Date.now() + Math.random().toString(36).substr(2, 9);
             const questionHtml = `
                 <div class="card" id="${questionId}" style="margin-top: 15px; border: 2px solid #667eea;">
                     <h3 style="color: #764ba2; margin-bottom: 15px;">
@@ -1462,13 +1625,13 @@
             `;
             
             document.getElementById('editQuestionsContainer').insertAdjacentHTML('beforeend', questionHtml);
-            window.editQuestions.push(questionId);
+            editQuestions.push(questionId);
         }
 
         window.removeEditQuestion = function(id) {
             if (confirm('هل أنت متأكد من حذف هذا السؤال؟')) {
                 document.getElementById(id).remove();
-                window.editQuestions = window.editQuestions.filter(q => q !== id);
+                editQuestions = editQuestions.filter(q => q !== id);
             }
         }
 
@@ -1482,13 +1645,13 @@
                 return;
             }
             
-            if (window.editQuestions.length === 0) {
+            if (editQuestions.length === 0) {
                 showToast('الرجاء إضافة سؤال واحد على الأقل', true);
                 return;
             }
             
             const examQuestions = [];
-            for (let qId of window.editQuestions) {
+            for (let qId of editQuestions) {
                 const text = document.getElementById(qId + '-text')?.value.trim();
                 const opt1 = document.getElementById(qId + '-opt1')?.value.trim();
                 const opt2 = document.getElementById(qId + '-opt2')?.value.trim();
@@ -1526,8 +1689,8 @@
 
         window.closeEditExamModal = function() {
             document.getElementById('editExamModal').style.display = 'none';
-            window.editQuestions = [];
-            window.currentEditExamId = null;
+            editQuestions = [];
+            currentEditExamId = null;
         }
 
         window.loadExams = function() {
@@ -1536,12 +1699,12 @@
                 const exams = snapshot.val();
                 const examsList = document.getElementById('examsList');
                 examsList.innerHTML = '';
-                window.allExams = [];
+                allExams = [];
                 
                 if (exams) {
                     Object.keys(exams).forEach(key => {
                         const exam = exams[key];
-                        window.allExams.push({ id: key, ...exam });
+                        allExams.push({ id: key, ...exam });
                         
                         const examCard = document.createElement('div');
                         examCard.className = 'result-card';
@@ -1588,89 +1751,329 @@
             }
         }
 
-        window.viewExamResults = function(examId) {
-            showTab('results');
-            document.getElementById('searchResult').value = '';
+        // Export to Excel function - مبسط ليحتوي فقط على اسم الطالب والنتيجة
+        window.exportToExcel = function(examId, examTitle, results, exam) {
+            // Create worksheet data
+            const wsData = [];
             
-            setTimeout(() => {
-                const results = document.querySelectorAll('#resultsList .result-card');
-                results.forEach(result => {
-                    if (result.innerHTML.includes(examId)) {
-                        result.style.border = '2px solid #667eea';
-                        result.style.transform = 'scale(1.02)';
-                        result.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        
-                        setTimeout(() => {
-                            result.style.border = '2px solid #e0e0e0';
-                            result.style.transform = 'scale(1)';
-                        }, 3000);
-                    }
-                });
-            }, 500);
+            // Add header
+            wsData.push(['نتائج اختبار: ' + examTitle]);
+            wsData.push(['تاريخ التقرير: ' + new Date().toLocaleString('ar-EG')]);
+            wsData.push([]);
+            
+            // Add results table header - فقط اسم الطالب والنتيجة
+            wsData.push(['م', 'اسم الطالب', 'النتيجة']);
+            
+            // Add results - ترتيب تنازلي حسب النتيجة
+            const sortedResults = [...results].sort((a, b) => b.score - a.score);
+            
+            sortedResults.forEach((result, index) => {
+                wsData.push([
+                    index + 1,
+                    result.studentName,
+                    result.score + '/' + result.total
+                ]);
+            });
+            
+            // Add summary
+            wsData.push([]);
+            wsData.push(['ملخص:']);
+            wsData.push(['عدد المشاركين:', results.length]);
+            
+            // Calculate average
+            let totalScore = 0;
+            results.forEach(r => totalScore += r.score);
+            const average = results.length > 0 ? (totalScore / results.length).toFixed(2) : 0;
+            wsData.push(['متوسط الدرجات:', average]);
+            
+            // Create workbook and worksheet
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+            
+            // Style the worksheet - عرض الأعمدة المناسب
+            ws['!cols'] = [
+                { wch: 5 },   // م
+                { wch: 30 },  // اسم الطالب
+                { wch: 15 }   // النتيجة
+            ];
+            
+            XLSX.utils.book_append_sheet(wb, ws, 'النتائج');
+            
+            // Save file
+            const fileName = `نتائج_${examTitle}_${new Date().toLocaleDateString('ar-EG').replace(/\//g, '-')}.xlsx`;
+            XLSX.writeFile(wb, fileName);
+            
+            showToast('✅ تم تحميل ملف Excel بنجاح');
         }
 
-        window.loadResults = function() {
+        // View exam results - Shows only results for a specific exam
+        window.viewExamResults = function(examId) {
+            // Set the current exam filter
+            currentExamFilter = examId;
+            
+            // Get exam details to show in header
+            get(ref(db, 'exams/' + examId)).then((examSnap) => {
+                const exam = examSnap.val();
+                
+                // Switch to results tab
+                showTab('results');
+                
+                // Update UI for filtered view
+                document.getElementById('resultsTitle').innerHTML = `<i class="fas fa-chart-bar"></i> نتائج اختبار: ${exam.title}`;
+                document.getElementById('backToAllResultsBtn').style.display = 'inline-flex';
+                document.getElementById('resultsSearchBox').style.display = 'block';
+                
+                // Load filtered results
+                loadExamResults(examId, exam);
+            });
+        }
+
+        // Load results for a specific exam
+        function loadExamResults(examId, exam) {
+            const resultsRef = ref(db, 'results');
+            const resultsQuery = query(resultsRef, orderByChild('examId'), equalTo(examId));
+            
+            onValue(resultsQuery, (snapshot) => {
+                const results = snapshot.val();
+                const resultsList = document.getElementById('resultsList');
+                resultsList.innerHTML = '';
+                
+                if (results) {
+                    // Calculate statistics
+                    let totalStudents = 0;
+                    let totalScore = 0;
+                    let totalQuestions = 0;
+                    let highestScore = 0;
+                    let lowestScore = exam.questions.length;
+                    let passedCount = 0;
+                    
+                    const resultsArray = [];
+                    
+                    // Process each result
+                    let promises = Object.keys(results).map(key => {
+                        const result = { id: key, ...results[key] };
+                        return get(ref(db, 'students/' + result.studentId)).then((studentSnap) => {
+                            const student = studentSnap.val();
+                            
+                            resultsArray.push({
+                                ...result,
+                                studentName: student ? student.name : 'غير معروف',
+                                studentGrade: student ? student.grade : ''
+                            });
+                            
+                            totalStudents++;
+                            totalScore += result.score;
+                            totalQuestions += result.total;
+                            
+                            if (result.score > highestScore) highestScore = result.score;
+                            if (result.score < lowestScore) lowestScore = result.score;
+                            if (result.score >= exam.questions.length * 0.5) passedCount++;
+                            
+                            const percentage = Math.round((result.score / result.total) * 100);
+                            
+                            const resultCard = document.createElement('div');
+                            resultCard.className = 'result-card';
+                            resultCard.setAttribute('data-student-name', student ? student.name : '');
+                            resultCard.setAttribute('data-percentage', percentage);
+                            resultCard.innerHTML = `
+                                <div class="result-header">
+                                    <h3><i class="fas fa-user" style="color: #667eea;"></i> ${student ? student.name : 'طالب'}</h3>
+                                    <div class="result-stats">
+                                        <span class="grade-badge"><i class="fas fa-layer-group"></i> ${student ? student.grade : ''}</span>
+                                    </div>
+                                </div>
+                                <div style="margin: 10px 0;">
+                                    <p><strong><i class="fas fa-star" style="color: #ffab2d;"></i> النتيجة:</strong> ${result.score} / ${result.total}</p>
+                                    <p><strong><i class="fas fa-percent" style="color: #00d25b;"></i> النسبة:</strong> ${percentage}%</p>
+                                    <p><strong><i class="far fa-clock"></i> التاريخ:</strong> ${new Date(result.completedAt).toLocaleString('ar-EG')}</p>
+                                </div>
+                                <button class="action-btn btn-primary" onclick="showResultDetails('${result.id}')" style="width: 100%; background: #667eea; color: white; border: none; padding: 10px; border-radius: 10px; cursor: pointer;">
+                                    <i class="fas fa-eye"></i> عرض التفاصيل
+                                </button>
+                            `;
+                            resultsList.appendChild(resultCard);
+                        });
+                    });
+                    
+                    Promise.all(promises).then(() => {
+                        // Display statistics
+                        const average = totalStudents > 0 ? Math.round((totalScore / totalQuestions) * 100) : 0;
+                        const passRate = totalStudents > 0 ? Math.round((passedCount / totalStudents) * 100) : 0;
+                        
+                        const statsHtml = `
+                            <div class="stat-summary-card">
+                                <div class="value">${totalStudents}</div>
+                                <div class="label">عدد المشاركين</div>
+                            </div>
+                            <div class="stat-summary-card">
+                                <div class="value">${average}%</div>
+                                <div class="label">المعدل العام</div>
+                            </div>
+                            <div class="stat-summary-card">
+                                <div class="value">${highestScore}/${exam.questions.length}</div>
+                                <div class="label">أعلى نتيجة</div>
+                            </div>
+                            <div class="stat-summary-card">
+                                <div class="value">${lowestScore}/${exam.questions.length}</div>
+                                <div class="label">أقل نتيجة</div>
+                            </div>
+                            <div class="stat-summary-card">
+                                <div class="value">${passRate}%</div>
+                                <div class="label">نسبة النجاح</div>
+                            </div>
+                        `;
+                        
+                        document.getElementById('resultsStats').innerHTML = statsHtml;
+                        document.getElementById('resultsStats').style.display = 'grid';
+                        
+                        // Show exam header with export button
+                        document.getElementById('examResultsHeader').innerHTML = `
+                            <div class="exam-results-header">
+                                <div>
+                                    <h3><i class="fas fa-pencil-alt"></i> ${exam.title}</h3>
+                                    <p><i class="fas fa-layer-group"></i> ${exam.grade} | <i class="fas fa-question-circle"></i> ${exam.questions.length} أسئلة</p>
+                                </div>
+                                <button class="btn-excel" onclick="exportToExcel('${examId}', '${exam.title.replace(/'/g, "\\'")}', ${JSON.stringify(resultsArray).replace(/"/g, '&quot;')}, ${JSON.stringify(exam).replace(/"/g, '&quot;')})">
+                                    <i class="fas fa-file-excel"></i>
+                                    تحميل Excel
+                                </button>
+                            </div>
+                        `;
+                        document.getElementById('examResultsHeader').style.display = 'block';
+                    });
+                } else {
+                    resultsList.innerHTML = '<p style="text-align: center; padding: 30px;">لا توجد نتائج لهذا الاختبار بعد</p>';
+                    document.getElementById('resultsStats').style.display = 'none';
+                    document.getElementById('examResultsHeader').innerHTML = `
+                        <div class="exam-results-header">
+                            <div>
+                                <h3><i class="fas fa-pencil-alt"></i> ${exam.title}</h3>
+                                <p><i class="fas fa-layer-group"></i> ${exam.grade} | <i class="fas fa-question-circle"></i> ${exam.questions.length} أسئلة</p>
+                            </div>
+                        </div>
+                    `;
+                    document.getElementById('examResultsHeader').style.display = 'block';
+                }
+            });
+        }
+
+        // Load all results grouped by exam
+        window.loadAllResultsGrouped = function() {
             const resultsRef = ref(db, 'results');
             onValue(resultsRef, (snapshot) => {
                 const results = snapshot.val();
                 const resultsList = document.getElementById('resultsList');
                 resultsList.innerHTML = '';
-                window.allResults = [];
+                allResults = [];
                 
                 if (results) {
-                    let promises = [];
+                    // Group results by exam
+                    const examGroups = {};
                     
                     Object.keys(results).forEach(key => {
                         const result = results[key];
-                        promises.push(
-                            Promise.all([
-                                get(ref(db, 'students/' + result.studentId)),
-                                get(ref(db, 'exams/' + result.examId))
-                            ]).then(([studentSnap, examSnap]) => {
-                                const student = studentSnap.val();
-                                const exam = examSnap.val();
-                                
-                                window.allResults.push({
-                                    id: key,
-                                    ...result,
-                                    studentName: student ? student.name : 'غير معروف',
-                                    examTitle: exam ? exam.title : 'غير معروف',
-                                    studentGrade: student ? student.grade : ''
-                                });
-                                
-                                const resultCard = document.createElement('div');
-                                resultCard.className = 'result-card';
-                                resultCard.innerHTML = `
-                                    <div class="result-header">
-                                        <h3><i class="fas fa-user" style="color: #667eea;"></i> ${student ? student.name : 'طالب'}</h3>
-                                        <div class="result-stats">
-                                            <span class="grade-badge"><i class="fas fa-layer-group"></i> ${student ? student.grade : ''}</span>
-                                        </div>
-                                    </div>
-                                    <div style="margin: 10px 0;">
-                                        <p><strong><i class="fas fa-pencil-alt"></i> الاختبار:</strong> ${exam ? exam.title : ''}</p>
-                                        <p><strong><i class="fas fa-star" style="color: #ffab2d;"></i> النتيجة:</strong> ${result.score} / ${result.total}</p>
-                                        <p><strong><i class="fas fa-percent" style="color: #00d25b;"></i> النسبة:</strong> ${Math.round((result.score / result.total) * 100)}%</p>
-                                        <p><strong><i class="far fa-clock"></i> التاريخ:</strong> ${new Date(result.completedAt).toLocaleString('ar-EG')}</p>
-                                    </div>
-                                    <button class="action-btn btn-primary" onclick="showResultDetails('${key}')" style="width: 100%; background: #667eea; color: white; border: none; padding: 10px; border-radius: 10px; cursor: pointer;">
-                                        <i class="fas fa-eye"></i> عرض التفاصيل
-                                    </button>
-                                `;
-                                resultsList.appendChild(resultCard);
-                            })
-                        );
+                        if (!examGroups[result.examId]) {
+                            examGroups[result.examId] = [];
+                        }
+                        examGroups[result.examId].push({ id: key, ...result });
                     });
                     
-                    Promise.all(promises).then(() => {
-                        if (window.allResults.length === 0) {
-                            resultsList.innerHTML = '<p style="text-align: center; padding: 30px;">لا توجد نتائج بعد</p>';
-                        }
+                    // Display each exam group
+                    Object.keys(examGroups).forEach(examId => {
+                        get(ref(db, 'exams/' + examId)).then((examSnap) => {
+                            const exam = examSnap.val();
+                            if (!exam) return;
+                            
+                            const examGroup = document.createElement('div');
+                            examGroup.className = 'exam-group';
+                            
+                            // Create exam group header
+                            const examHeader = document.createElement('div');
+                            examHeader.className = 'exam-group-header';
+                            
+                            // Calculate exam stats
+                            let totalStudents = examGroups[examId].length;
+                            let totalScore = 0;
+                            let totalQuestions = 0;
+                            
+                            examGroups[examId].forEach(r => {
+                                totalScore += r.score;
+                                totalQuestions += r.total;
+                            });
+                            
+                            const average = totalStudents > 0 ? Math.round((totalScore / totalQuestions) * 100) : 0;
+                            
+                            examHeader.innerHTML = `
+                                <div>
+                                    <h3><i class="fas fa-pencil-alt"></i> ${exam.title}</h3>
+                                    <p>عدد المشاركين: ${totalStudents} | المعدل: ${average}%</p>
+                                </div>
+                                <button class="btn-excel-small" onclick="viewExamResults('${examId}')">
+                                    <i class="fas fa-chart-bar"></i> عرض التفاصيل
+                                </button>
+                            `;
+                            
+                            examGroup.appendChild(examHeader);
+                            
+                            // Create results container
+                            const resultsContainer = document.createElement('div');
+                            resultsContainer.className = 'exam-group-results';
+                            
+                            // Display first 3 results
+                            const recentResults = examGroups[examId].slice(0, 3);
+                            
+                            let resultsPromises = recentResults.map(result => {
+                                return get(ref(db, 'students/' + result.studentId)).then((studentSnap) => {
+                                    const student = studentSnap.val();
+                                    const percentage = Math.round((result.score / result.total) * 100);
+                                    
+                                    const resultCard = document.createElement('div');
+                                    resultCard.className = 'exam-card';
+                                    resultCard.innerHTML = `
+                                        <div class="result-header">
+                                            <span class="exam-title">${student ? student.name : 'طالب'}</span>
+                                            <span class="exam-badge" style="background: ${percentage >= 70 ? '#00d25b' : '#ff4757'}">${percentage}%</span>
+                                        </div>
+                                        <div class="exam-info">
+                                            <span><i class="fas fa-check-circle" style="color: #00d25b;"></i> ${result.score}/${result.total}</span>
+                                            <span><i class="far fa-clock"></i> ${new Date(result.completedAt).toLocaleDateString('ar-EG')}</span>
+                                        </div>
+                                    `;
+                                    resultsContainer.appendChild(resultCard);
+                                });
+                            });
+                            
+                            Promise.all(resultsPromises).then(() => {
+                                if (examGroups[examId].length > 3) {
+                                    const moreBtn = document.createElement('button');
+                                    moreBtn.className = 'action-btn btn-info';
+                                    moreBtn.style.marginTop = '10px';
+                                    moreBtn.style.width = '100%';
+                                    moreBtn.innerHTML = `<i class="fas fa-plus"></i> عرض ${examGroups[examId].length - 3} نتائج إضافية`;
+                                    moreBtn.onclick = () => viewExamResults(examId);
+                                    resultsContainer.appendChild(moreBtn);
+                                }
+                            });
+                            
+                            examGroup.appendChild(resultsContainer);
+                            resultsList.appendChild(examGroup);
+                        });
                     });
                 } else {
                     resultsList.innerHTML = '<p style="text-align: center; padding: 30px;">لا توجد نتائج بعد</p>';
                 }
             });
+        }
+
+        // Back to all results
+        window.backToAllResults = function() {
+            currentExamFilter = null;
+            document.getElementById('backToAllResultsBtn').style.display = 'none';
+            document.getElementById('resultsSearchBox').style.display = 'block';
+            document.getElementById('examResultsHeader').style.display = 'none';
+            document.getElementById('resultsStats').style.display = 'none';
+            document.getElementById('resultsTitle').innerHTML = '<i class="fas fa-chart-line"></i> نتائج الاختبارات';
+            loadAllResultsGrouped();
         }
 
         window.showResultDetails = function(resultId) {
@@ -1734,7 +2137,7 @@
             const examsList = document.getElementById('examsList');
             examsList.innerHTML = '';
             
-            const filtered = window.allExams.filter(exam => 
+            const filtered = allExams.filter(exam => 
                 exam.title.toLowerCase().includes(searchText) ||
                 exam.grade.includes(searchText)
             );
@@ -1775,42 +2178,33 @@
         }
 
         window.searchResults = function() {
+            // Only search within currently displayed results
             const searchText = document.getElementById('searchResult').value.toLowerCase();
             const resultsList = document.getElementById('resultsList');
-            resultsList.innerHTML = '';
             
-            const filtered = window.allResults.filter(result => 
-                result.studentName.toLowerCase().includes(searchText) ||
-                result.examTitle.toLowerCase().includes(searchText)
-            );
-            
-            if (filtered.length === 0) {
-                resultsList.innerHTML = '<p style="text-align: center; padding: 30px;">لا توجد نتائج للبحث</p>';
-                return;
+            if (currentExamFilter) {
+                // Search in exam results
+                const resultCards = resultsList.querySelectorAll('.result-card');
+                resultCards.forEach(card => {
+                    const studentName = card.getAttribute('data-student-name') || '';
+                    if (studentName.toLowerCase().includes(searchText)) {
+                        card.style.display = 'block';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            } else {
+                // Search in grouped results
+                const examGroups = resultsList.querySelectorAll('.exam-group');
+                examGroups.forEach(group => {
+                    const groupText = group.textContent.toLowerCase();
+                    if (groupText.includes(searchText)) {
+                        group.style.display = 'block';
+                    } else {
+                        group.style.display = 'none';
+                    }
+                });
             }
-            
-            filtered.forEach(result => {
-                const resultCard = document.createElement('div');
-                resultCard.className = 'result-card';
-                resultCard.innerHTML = `
-                    <div class="result-header">
-                        <h3><i class="fas fa-user" style="color: #667eea;"></i> ${result.studentName}</h3>
-                        <div class="result-stats">
-                            <span class="grade-badge"><i class="fas fa-layer-group"></i> ${result.studentGrade || ''}</span>
-                        </div>
-                    </div>
-                    <div style="margin: 10px 0;">
-                        <p><strong><i class="fas fa-pencil-alt"></i> الاختبار:</strong> ${result.examTitle}</p>
-                        <p><strong><i class="fas fa-star" style="color: #ffab2d;"></i> النتيجة:</strong> ${result.score} / ${result.total}</p>
-                        <p><strong><i class="fas fa-percent" style="color: #00d25b;"></i> النسبة:</strong> ${Math.round((result.score / result.total) * 100)}%</p>
-                        <p><strong><i class="far fa-clock"></i> التاريخ:</strong> ${new Date(result.completedAt).toLocaleString('ar-EG')}</p>
-                    </div>
-                    <button class="action-btn btn-primary" onclick="showResultDetails('${result.id}')" style="width: 100%; background: #667eea; color: white; border: none; padding: 10px; border-radius: 10px; cursor: pointer;">
-                        <i class="fas fa-eye"></i> عرض التفاصيل
-                    </button>
-                `;
-                resultsList.appendChild(resultCard);
-            });
         }
 
         // Initialize
@@ -1818,7 +2212,7 @@
             loadExistingUsernames();
             loadStudents();
             loadExams();
-            loadResults();
+            loadAllResultsGrouped();
         }
 
         // Close modals when clicking outside
